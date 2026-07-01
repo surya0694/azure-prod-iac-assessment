@@ -1,0 +1,57 @@
+name: Terraform CI
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform-ci.yml"
+      - ".tflint.hcl"
+  push:
+    branches: ["main"]
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform-ci.yml"
+      - ".tflint.hcl"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-and-lint:
+    name: Validate and lint Terraform
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    env:
+      # AzureRM v4 requires a subscription ID during provider configuration.
+      # This dummy value is enough for fmt/validate/lint because the workflow does not run plan/apply.
+      ARM_SUBSCRIPTION_ID: "00000000-0000-0000-0000-000000000000"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.14.6"
+          terraform_wrapper: false
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v5
+
+      - name: Terraform fmt check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init without backend
+        run: terraform init -backend=false -input=false
+
+      - name: Terraform validate
+        run: terraform validate -no-color
+
+      - name: TFLint init
+        run: tflint --init --config ../.tflint.hcl
+
+      - name: TFLint
+        run: tflint --recursive --config ../.tflint.hcl

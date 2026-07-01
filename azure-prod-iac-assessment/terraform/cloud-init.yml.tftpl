@@ -1,0 +1,59 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+packages:
+  - nginx
+  - openssl
+
+write_files:
+  - path: /var/www/html/index.html
+    owner: root:root
+    permissions: '0644'
+    content: |
+      <!doctype html>
+      <html>
+        <head><title>${project_name} HTTPS Service</title></head>
+        <body>
+          <h1>${project_name} HTTPS service is running</h1>
+          <p>Served by nginx on Azure Linux VM.</p>
+        </body>
+      </html>
+  - path: /var/www/html/healthz
+    owner: root:root
+    permissions: '0644'
+    content: |
+      ok
+  - path: /etc/nginx/sites-available/default
+    owner: root:root
+    permissions: '0644'
+    content: |
+      server {
+          listen 443 ssl default_server;
+          listen [::]:443 ssl default_server;
+          server_name _;
+
+          ssl_certificate /etc/ssl/certs/${project_name}.crt;
+          ssl_certificate_key /etc/ssl/private/${project_name}.key;
+          ssl_protocols TLSv1.2 TLSv1.3;
+
+          root /var/www/html;
+          index index.html;
+
+          location /healthz {
+              add_header Content-Type text/plain;
+              return 200 'ok\n';
+          }
+
+          location / {
+              try_files $uri $uri/ =404;
+          }
+      }
+
+runcmd:
+  - mkdir -p /etc/ssl/private
+  - openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/${project_name}.key -out /etc/ssl/certs/${project_name}.crt -subj "/CN=${project_name}.local"
+  - chmod 600 /etc/ssl/private/${project_name}.key
+  - nginx -t
+  - systemctl enable nginx
+  - systemctl restart nginx
+  - systemctl status nginx --no-pager

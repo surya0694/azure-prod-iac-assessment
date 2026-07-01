@@ -1,0 +1,8 @@
+project_name             = "prod-iac"
+environment              = "dev"
+location                 = "eastus"
+admin_username           = "azureadmin"
+admin_ssh_public_key     = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIexample replace-with-your-public-key user@example"
+allowed_https_cidrs      = ["0.0.0.0/0"]
+allowed_ssh_cidrs        = ["203.0.113.10/32"]
+alert_email              = "ops@example.com"
